@@ -4,7 +4,7 @@
   <title><![CDATA[My Octopress Blog]]></title>
   <link href="http://luoli523.github.com/atom.xml" rel="self"/>
   <link href="http://luoli523.github.com/"/>
-  <updated>2012-10-26T22:54:52+08:00</updated>
+  <updated>2012-10-26T23:36:10+08:00</updated>
   <id>http://luoli523.github.com/</id>
   <author>
     <name><![CDATA[Your Name]]></name>
@@ -12,5 +12,14 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[第一篇测试博客]]></title>
+    <link href="http://luoli523.github.com/blog/2012/10/26/di-%5B%3F%5D-pian-ce-shi-bo-ke/"/>
+    <updated>2012-10-26T23:28:00+08:00</updated>
+    <id>http://luoli523.github.com/blog/2012/10/26/di-[?]-pian-ce-shi-bo-ke</id>
+    <content type="html"><![CDATA[
+]]></content>
+  </entry>
   
 </feed>
