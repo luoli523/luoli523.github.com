@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: 苦逼 | My Octopress Blog]]></title>
+  <title><![CDATA[Category: 苦逼 | luoli的博客]]></title>
   <link href="http://luoli523.github.com/blog/categories/苦逼/atom.xml" rel="self"/>
   <link href="http://luoli523.github.com/"/>
-  <updated>2012-10-27T15:11:02+08:00</updated>
+  <updated>2012-10-27T15:17:54+08:00</updated>
   <id>http://luoli523.github.com/</id>
   <author>
-    <name><![CDATA[Your Name]]></name>
+    <name><![CDATA[罗李]]></name>
     
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
@@ -62,8 +62,6 @@ String a = "word count";
 <p><a href="http://markdown.tw/#html" title="markdown语法">markdown语法</a></p>
 
 <p><img src="http://pic.yupoo.com/nofearbit/Cn4JMSFA/ycUuv.png" alt="测试引入一张图片" /></p>
-
-<p>[URL=http://www.yupoo.com/photos/nofearbit/87033772/][IMG]http://pic.yupoo.com/nofearbit/Cn4JMSFA/ycUuv.png[/IMG][/URL]</p>
 
 <hr />
 
