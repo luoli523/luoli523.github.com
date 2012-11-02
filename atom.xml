@@ -4,7 +4,7 @@
   <title><![CDATA[luoli523]]></title>
   <link href="http://luoli523.github.com/atom.xml" rel="self"/>
   <link href="http://luoli523.github.com/"/>
-  <updated>2012-10-27T15:23:52+08:00</updated>
+  <updated>2012-11-03T00:23:01+08:00</updated>
   <id>http://luoli523.github.com/</id>
   <author>
     <name><![CDATA[罗李]]></name>
@@ -14,85 +14,17 @@
 
   
   <entry>
-    <title type="html"><![CDATA[第一篇测试博客]]></title>
-    <link href="http://luoli523.github.com/blog/2012/10/26/di-%5B%3F%5D-pian-ce-shi-bo-ke/"/>
-    <updated>2012-10-26T23:28:00+08:00</updated>
-    <id>http://luoli523.github.com/blog/2012/10/26/di-[?]-pian-ce-shi-bo-ke</id>
-    <content type="html"><![CDATA[<p>标题</p>
+    <title type="html"><![CDATA[新博客，第一篇，写给云梯]]></title>
+    <link href="http://luoli523.github.com/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/"/>
+    <updated>2012-11-03T00:19:00+08:00</updated>
+    <id>http://luoli523.github.com/blog/2012/11/03/xin-bo-ke-,di-[?]-pian-,xie-gei-yun-ti</id>
+    <content type="html"><![CDATA[<p>“数大就是美”，这是徐志摩同学《志摩日记二则》中的一句话：“数大”便是美。比如说：从无极的蓝空中下窥大地，是美；泰山顶上的云海，高大的云峰在晨光里镇定着，是美……。其实不仅仅这些，对于我来说，从云梯集群300台机器涨到现在3000多台，是美；云梯namenode的rpc吞吐一次次的上涨，是美；云梯的每一次性能数据的提升，也是美。</p>
 
-<h1>This is an H1</h1>
+<p>虽然过程并不是非常顺利，虽然伴随着各种惊心动魄和提心吊胆，虽然最新的一次升级经历了两次失败，但是昨天（2012-11-01），我们的云梯集群第一次超过了3000规模（3160），存储容量达到65PB，namenode平均每天处理rpc数量20+亿，集群DFS中文件和目录上2.2亿，blocks数2.8亿。到这种程度，我们所做的任何事，早已经超越了一般的程序设计和技术开发，每一次的升级，每一行代码的修改，都牵动着整个公司几千工程师和他们的工作，他们的业绩，和他们对我们的信心。每动一下手指，都是责任。对我一个小小的工程师来说，这样一份天大的责任，扛的实在是诚恐诚惶。最近的两次升级都失败了，引来了很多的抱怨和质疑，很对不起那些翘首企盼的同事们。不知道该说什么好，我能做的：尽人事，听天命。</p>
 
-<h2>This is an H2</h2>
+<p>新博客开张，第一篇，写给云梯。加油吧</p>
 
-<h3>This is an H3</h3>
-
-<p>引言</p>
-
-<blockquote><p>This is a blockquote with two paragraphs. Lorem ipsum dolor sit amet,
-consectetuer adipiscing elit. Aliquam hendrerit mi posuere lectus.
-Vestibulum enim wisi, viverra nec, fringilla in, laoreet vitae, risus.</p>
-
-<p>Donec sit amet nisl. Aliquam semper ipsum sit amet velit. Suspendisse
-id sem consectetuer libero luctus adipiscing.</p>
-
-<p>This is a blockquote with two paragraphs. Lorem ipsum dolor sit amet,
-consectetuer adipiscing elit. Aliquam hendrerit mi posuere lectus.
-Vestibulum enim wisi, viverra nec, fringilla in, laoreet vitae, risus.</p>
-
-<p>This is the first level of quoting.</p>
-
-<blockquote><p>This is nested blockquote.</p></blockquote>
-
-<p>Back to the first level.</p>
-
-<h2>This is a header.</h2>
-
-<ol>
-<li>This is the first list item.</li>
-<li>This is the second list item.</li>
-</ol>
-
-
-<p>Here&#8217;s some example code:</p>
-
-<pre><code>return shell_exec("echo $input | $markdown_script");
-String a = "word count";
-</code></pre></blockquote>
-
-<p><a href="http://markdown.tw/#html" title="markdown语法">markdown语法</a></p>
-
-<p><img src="http://pic.yupoo.com/nofearbit/Cn4JMSFA/ycUuv.png" alt="测试引入一张图片" /></p>
-
-<hr />
-
-<ol>
-<li>nima</li>
-<li>list1</li>
-<li>list1_1</li>
-<li>list1_2</li>
-<li>list1_3</li>
-<li>list2</li>
-<li><p>list3</p></li>
-<li><p>This is a list item with two paragraphs. Lorem ipsum dolor
-sit amet, consectetuer adipiscing elit. Aliquam hendrerit
-mi posuere lectus.</p>
-
-<p>  Vestibulum enim wisi, viverra nec, fringilla in, laoreet
-vitae, risus. Donec sit amet nisl. Aliquam semper ipsum
-sit amet velit.</p></li>
-<li>Suspendisse id sem consectetuer libero luctus adipiscing.
-
-<pre><code>String str = "HelloWorld";
-</code></pre></li>
-</ol>
-
-
-<p>Here is an example of AppleScript:</p>
-
-<pre><code>tell application "Foo"
-    beep
-end tell
-</code></pre>
+<p>BTW：感谢华仔帮我申请的域名，我想我会一直保留这个域名的。</p>
 ]]></content>
   </entry>
   
