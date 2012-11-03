@@ -1,24 +1,98 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[luoli523]]></title>
-  <link href="http://luoli523.github.com/atom.xml" rel="self"/>
-  <link href="http://luoli523.github.com/"/>
-  <updated>2012-11-03T18:11:49+08:00</updated>
-  <id>http://luoli523.github.com/</id>
-  <author>
-    <name><![CDATA[罗李]]></name>
-    
-  </author>
-  <generator uri="http://octopress.org/">Octopress</generator>
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>跟facebook工程师交流HDFS笔记整理 - luoli523</title>
+  <meta name="author" content="罗李">
 
   
-  <entry>
-    <title type="html"><![CDATA[跟facebook工程师交流HDFS笔记整理]]></title>
-    <link href="http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/"/>
-    <updated>2012-11-03T17:17:00+08:00</updated>
-    <id>http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li</id>
-    <content type="html"><![CDATA[<p>hadoop在纽约的大会今年是10月22日～10月25日召开的。被公司派去美国参加hadoop大会，本来非常高兴，谁知道一切具备的情况下居然莫名其妙的被美国使馆给拒签了…… 连B1签证都被拒了，点儿实在是太背。没办法，本来事先约好的跟facebook hadoop团队的交流中我的那部分，只有由同事代劳了。听说FB的人得知我因为签证被拒而没有去，都很诡异的笑了 -_-</p>
+  <meta name="description" content="hadoop在纽约的大会今年是10月22日～10月25日召开的。被公司派去美国参加hadoop大会，本来非常高兴，谁知道一切具备的情况下居然莫名其妙的被美国使馆给拒签了…… 连B1签证都被拒了，点儿实在是太背。没办法，本来事先约好的跟facebook hadoop团队的交流中我的那部分， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="luoli523" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">luoli523</a></h1>
+  
+    <h2>今朝有酒？奈何不醉</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:luoli523.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">跟facebook工程师交流HDFS笔记整理</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-03T17:17:00+08:00" pubdate data-updated="true">Nov 3<span>rd</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>hadoop在纽约的大会今年是10月22日～10月25日召开的。被公司派去美国参加hadoop大会，本来非常高兴，谁知道一切具备的情况下居然莫名其妙的被美国使馆给拒签了…… 连B1签证都被拒了，点儿实在是太背。没办法，本来事先约好的跟facebook hadoop团队的交流中我的那部分，只有由同事代劳了。听说FB的人得知我因为签证被拒而没有去，都很诡异的笑了 -_-</p>
 
 <p>不过还好，虽然人没到场，但我要交流的topic和相应的细节都整理好了托同事带到了，然后通过事后的邮件来往，并不影响实质的交流。随着沟通的深入，我们的情况他们也都了解，他们的一些细节，我也都已经清楚。</p>
 
@@ -62,22 +136,162 @@
 <p>整理了一下，重要的就以上这些。真的是对我们接下来的工作有很多方向上的帮助。不得不说，跟FB的开发团队的交流有一种如沐春风的感觉。很单纯的一群人，听说他们的Raid系统在我们的集群也成功上线，他们都高兴的欢呼，击掌相庆。什么叫价值观？这才是价值观:)</p>
 
 <p>自从删除CSDN上的博客以后，好久没有整理笔记了，以后我会把我们开发中的积累和经验都记下来，整理到这里来。呵呵，好记性，还是不如烂笔头的～</p>
-]]></content>
-  </entry>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
   
-  <entry>
-    <title type="html"><![CDATA[新博客，第一篇，写给云梯]]></title>
-    <link href="http://luoli523.github.com/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/"/>
-    <updated>2012-11-03T00:19:00+08:00</updated>
-    <id>http://luoli523.github.com/blog/2012/11/03/xin-bo-ke-,di-[?]-pian-,xie-gei-yun-ti</id>
-    <content type="html"><![CDATA[<p>“数大就是美”，这是徐志摩同学《志摩日记二则》中的一句话：“数大”便是美。比如说：从无极的蓝空中下窥大地，是美；泰山顶上的云海，高大的云峰在晨光里镇定着，是美……。其实不仅仅这些，对于我来说，从云梯集群300台机器涨到现在3000多台，是美；云梯namenode的rpc吞吐一次次的上涨，是美；云梯的每一次性能数据的提升，也是美。</p>
 
-<p>虽然过程并不是非常顺利，虽然伴随着各种惊心动魄和提心吊胆，虽然最新的一次升级经历了两次失败，但是昨天（2012-11-01），我们的云梯集群第一次超过了3000规模（3160），存储容量达到65PB，namenode平均每天处理rpc数量20+亿，集群DFS中文件和目录上2.2亿，blocks数2.8亿。到这种程度，我们所做的任何事，早已经超越了一般的程序设计和技术开发，每一次的升级，每一行代码的修改，都牵动着整个公司几千工程师和他们的工作，他们的业绩，和他们对我们的信心。每动一下手指，都是责任。对我一个小小的工程师来说，这样一份天大的责任，扛的实在是诚恐诚惶。最近的两次升级都失败了，引来了很多的抱怨和质疑，很对不起那些翘首企盼的同事们。不知道该说什么好，我能做的：尽人事，听天命。</p>
+<span class="byline author vcard">Posted by <span class="fn">罗李</span></span>
 
-<p>新博客开张，第一篇，写给云梯。加油吧</p>
+      
 
-<p>BTW：感谢华仔帮我申请的域名，我想我会一直保留这个域名的。</p>
-]]></content>
-  </entry>
+
+
+
+
+
+
+
   
-</feed>
+
+
+<time datetime="2012-11-03T17:17:00+08:00" pubdate data-updated="true">Nov 3<span>rd</span>, 2012</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <span>
+  <iframe 
+    width="86" 
+    scrolling="no" 
+    height="16" 
+    frameborder="0" 
+    src=
+      "http://hits.sinajs.cn/A1/weiboshare.html?url=http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/&amp;type=6&amp;ralateUid=1733934700&amp;language=zh_cn" allowtransparency="true">
+  </iframe>
+  </span>
+  
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/" data-via="" data-counturl="http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/" >Tweet</a>
+  
+  
+  
+</div>
+<hr style="border-bottom:1px dotted #bdbabd;height:1px;border-top:0px;border-left:0px;border-right:0px;" />
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/" title="Previous Post: 新博客，第一篇，写给云梯">&laquo; 新博客，第一篇，写给云梯</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">跟facebook工程师交流HDFS笔记整理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/">新博客，第一篇，写给云梯</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+<section>
+  <h1>Sina Weibo</h1>
+  <ul id="weibo">
+    <li>
+      <iframe 
+        width="100%" 
+        height="550" 
+        class="share_self" 
+        frameborder="0" 
+        scrolling="no" 
+        src="http://widget.weibo.com/weiboshow/index.php?width=0&height=550&ptype=1&speed=0&skin=&isTitle=0&noborder=1&isWeibo=1&isFans=&uid=1733934700&verifier=38a203e4">
+      </iframe>
+    </li>
+  </ul>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - 罗李 -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'luoli523.disqus.com';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/';
+        var disqus_url = 'http://luoli523.github.com/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
