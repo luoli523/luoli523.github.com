@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>hadoop rpc异步返回机制，大幅降低namenode processTime和queueTime - luoli523</title>
+  <meta name="author" content="罗李">
+
+  
+  <meta name="description" content="在我们的集群里，namenode是关注度最高的一个地方，尤其是作业运行开始变慢，集群吞吐开始下降的时候，虽然有可能是其他的原因，但第一个被想到的，总是namenode，俨然有一种superstar的感觉。 其实这是正常的。虽然只有在集群高负荷运行的时候， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://luoli523.github.com/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="luoli523" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">luoli523</a></h1>
+  
+    <h2>今朝有酒？奈何不醉</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:luoli523.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Hadoop Rpc异步返回机制，大幅降低namenode processTime和queueTime</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-04T16:00:00+08:00" pubdate data-updated="true">Nov 4<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在我们的集群里，namenode是关注度最高的一个地方，尤其是作业运行开始变慢，集群吞吐开始下降的时候，虽然有可能是其他的原因，但第一个被想到的，总是namenode，俨然有一种superstar的感觉。 <br/>
+其实这是正常的。虽然只有在集群高负荷运行的时候，namenode的吞吐才会直接影响到整个集群的效率，但是。。。。下面这张图是云梯集群全天24小时map和reduce计算槽位的运行情况: <br/>
+<img src="/static/MR-running.GIF" alt="MR daily running" /></p>
+
+<p>直接一句话就是：除了每天0点到9点的生产时段，云梯集群全天无间隙的满负载运行。所以几乎每天，namenode的吞吐都是集群管理员关注的焦点。毫不夸张的说，我对namenode各项性能指标的熟悉程度，甚至要超过我对我家厨房里碗和调羹的个数和我家冰箱里还剩下多少杯酸奶。</p>
+
+<p>最近做了一个比较大的改动，从测试的数据来看，效果不错。所以把中间的细节整理了一下：</p>
+
+<!-- more -->
+
+
+<p>namenode服务的时候，其实他运行的方式非常的简单，对文件系统的操作无非就是以下这些： <br/>
+1. create<br/>
+2. mkdir <br/>
+3. rename (mv)<br/>
+4. delete<br/>
+5. complete (close)<br/>
+6. setPermission<br/>
+7. getFileInfo<br/>
+8. getListing (ls)<br/>
+9. &#8230;..</p>
+
+<p>不管是在在传统的文件系统里还是在分布式的文件系统里，对文件系统的操作无非也就是这些。只不过在分布式文件系统里，这些操作都是通过RPC的方式来调用的。所以所白了，namenode做的事情，就是通过RPC Server对来自Client的以上各种请求进行响应而已。所以，抛开内部细节，从一个很上层的角度去看，namenode工作原理就如下图所示（因为这里要讲述的重点不在NN内存结构内部，其中NN内部内存结构的很多细节忽略了）： <br/>
+<img src="/static/nn-no-syncthread.PNG" alt="nn-no-syncthread" /></p>
+
+<p>从上图就可以看出，影响namenode性能的几个点，忽略掉一些细节，从一个很高的层面来看，分别是一下几个地方： <br/>
+* Rpc Server接收rpc调用的效率 <br/>
+* NN内存结构内在加读锁或者写锁后的处理效率 <br/>
+* editLog的sync效率 <br/>
+* Rpc的返回效率</p>
+
+<p>在我们的优化之前，namenode处理一个一个rpc的流程就如上图所示，流程如下:</p>
+
+<ol>
+<li>Client通过rpc向namenode rpc server发起一个请求（如mkdir）</li>
+<li>namenode Rpc Server的listener线程accept这个请求</li>
+<li>Listener的子线程Reader从client读取调用函数和参数,并将这些数据抽象成一个Call对象,存在CallQueue中,等待handler处理</li>
+<li>Handler线程中某一个空闲的线程从CallQueue中取出一个Call(比如就是刚才的mkdir),然后发现是要加写锁的操作,于是等待NN的WriteLock</li>
+<li>拿到WriteLock写锁以后,在NN内部数据结构中创建一个目录(dir)</li>
+<li>将这个对namespace的修改记录到(sync)editlog中</li>
+<li>释放NN写锁</li>
+<li>将这个调用的返回交给Responder线程</li>
+<li>Responder线程在获取CPU时间片后向Client返回这次调用(成功or失败)</li>
+</ol>
+
+
+<p>至此,一次rpc的调用过程结束.</p>
+
+<p>从这个过程可以很明显的看出来, 整个环节中,任何一个地方都有可能成为瓶颈, 我们一轮一轮的优化就是在解决了最耗时的地方瓶颈后,瓶颈点转移到另外的地方,然后下一轮接着优化的这样一个过程.  <br/>
+这次的修改主要针对的是以下的瓶颈点(以前几次优化针对的是其他的地方,所以我会在接下来的笔记里详细记录):</p>
+
+<p>在第6步，当这种加写锁的操作一旦过多，那么由于每一次加写锁的操作实际上都修改了整个文件系统的namespace，所以为了数据一致性的保证，必须要将这样的一次修改记录在editlog中（相当于mysql中的redo log），而我们的editlog为了保证数据可靠，配置了两个写入点，一个是namenode本地磁盘（12块SAS盘+Raid10卡），一个是通过NFS写入到另外一台远程的机器。当对editlog的sync变多时，由于editlog是顺序写入，那么就导致很多要sync edit的调用都等在这个地方无法交给Responder线程进行返回，也就无法释放NN的写锁。进而拖慢整个namenode的吞吐和响应速度。通常在这种时候，云梯hadoop用户的旺旺群里就会有用户问：“云梯怎么这么慢？又挂了？”</p>
+
+<p>针对这种情况，这次做的优化是这样的一种思路：</p>
+
+<ul>
+<li>由于在第6步sync editlog之前，其实整个调用已经可以返回给用户了，但是为了数据可靠性，就必须要等两个editlog的写入sync结束以后才能释放写锁，其他handler才能进一步处理其他的调用。所以，只要能够确保rpc在sync完editlog以后再返回这一点，那么，其实可以把等待sync完成的这段时间用来处理其他的rpc请求，就不会有数据丢失的风险。</li>
+<li>也就是说，可以让rpc在完成第5步以后，等待sync完成之前，就将NN的写锁释放，并将sync的等待交给后台线程（SyncThread）去做，并在sync完成以后，将这个rpc的返回交给responder线程，那么就可以把所有rpc调用中等待sync磁盘的时间给释放出来，提供更多的服务。</li>
+<li>修改过后，在第6步完成以后，其他的handler就不需要在等待writeLock，可以开始获取写锁开始服务</li>
+</ul>
+
+
+<p>因此，修改以后，整个过程变成如下形式： <br/>
+<img src="/static/nn-syncthread.PNG" alt="nn-syncthread" /></p>
+
+<p>从原理上分析，优化以后肯定会有如下效果：</p>
+
+<ol>
+<li>namenode响应中，rpc的processTime肯定会下降（因为没有了等待sync磁盘的时间）</li>
+<li>rpc CallQueue队列中的queueTime(每个call在callqueue中的排队时间)肯定也会下降</li>
+<li>namenode的整体吞吐肯定会上升</li>
+<li>namenode的CPU利用率肯定会上升（等待时间变短）</li>
+</ol>
+
+
+<p>通过测试集群的压测（不得不说，分布式测试团队的同事们实在是给力啊），以下是详细的各项指标的数据变化情况：<br/>
+<img src="/static/nn-syncthread-perf.PNG" alt="nn-syncthread-perf" /></p>
+
+<p>不过这次优化因为一个bug上线回滚了，在线上运行的那段时间观察效果的确很明显，赶上双十一封网，跟团队同事商量后，为了保险起见，决定双十一以后再上线。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">罗李</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-04T16:00:00+08:00" pubdate data-updated="true">Nov 4<span>th</span>, 2012</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <span>
+  <iframe 
+    width="86" 
+    scrolling="no" 
+    height="16" 
+    frameborder="0" 
+    src=
+      "http://hits.sinajs.cn/A1/weiboshare.html?url=http://luoli523.github.com/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/&amp;type=6&amp;ralateUid=1733934700&amp;language=zh_cn" allowtransparency="true">
+  </iframe>
+  </span>
+  
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://luoli523.github.com/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/" data-via="" data-counturl="http://luoli523.github.com/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/" >Tweet</a>
+  
+  
+  
+</div>
+<hr style="border-bottom:1px dotted #bdbabd;height:1px;border-top:0px;border-left:0px;border-right:0px;" />
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/" title="Previous Post: 跟facebook工程师交流HDFS笔记整理">&laquo; 跟facebook工程师交流HDFS笔记整理</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">hadoop rpc异步返回机制，大幅降低namenode processTime和queueTime</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">跟facebook工程师交流HDFS笔记整理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/">新博客，第一篇，写给云梯</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+<section>
+  <h1>Sina Weibo</h1>
+  <ul id="weibo">
+    <li>
+      <iframe 
+        width="100%" 
+        height="550" 
+        class="share_self" 
+        frameborder="0" 
+        scrolling="no" 
+        src="http://widget.weibo.com/weiboshow/index.php?width=0&height=550&ptype=1&speed=0&skin=&isTitle=0&noborder=1&isWeibo=1&isFans=&uid=1733934700&verifier=38a203e4">
+      </iframe>
+    </li>
+  </ul>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - 罗李 -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'luoli523.disqus.com';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://luoli523.github.com/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/';
+        var disqus_url = 'http://luoli523.github.com/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

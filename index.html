@@ -9,7 +9,7 @@
   <meta name="author" content="罗李">
 
   
-  <meta name="description" content="hadoop在纽约的大会今年是10月22日～10月25日召开的。被公司派去美国参加hadoop大会，本来非常高兴，谁知道一切具备的情况下居然莫名其妙的被美国使馆给拒签了…… 连B1签证都被拒了，点儿实在是太背。没办法，本来事先约好的跟facebook hadoop团队的交流中我的那部分， &hellip;">
+  <meta name="description" content="在我们的集群里，namenode是关注度最高的一个地方，尤其是作业运行开始变慢，集群吞吐开始下降的时候，虽然有可能是其他的原因，但第一个被想到的，总是namenode，俨然有一种superstar的感觉。 其实这是正常的。虽然只有在集群高负荷运行的时候， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,55 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">Hadoop Rpc异步返回机制，大幅降低namenode processTime和queueTime</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-04T16:00:00+08:00" pubdate data-updated="true">Nov 4<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在我们的集群里，namenode是关注度最高的一个地方，尤其是作业运行开始变慢，集群吞吐开始下降的时候，虽然有可能是其他的原因，但第一个被想到的，总是namenode，俨然有一种superstar的感觉。 <br/>
+其实这是正常的。虽然只有在集群高负荷运行的时候，namenode的吞吐才会直接影响到整个集群的效率，但是。。。。下面这张图是云梯集群全天24小时map和reduce计算槽位的运行情况: <br/>
+<img src="/static/MR-running.GIF" alt="MR daily running" /></p>
+
+<p>直接一句话就是：除了每天0点到9点的生产时段，云梯集群全天无间隙的满负载运行。所以几乎每天，namenode的吞吐都是集群管理员关注的焦点。毫不夸张的说，我对namenode各项性能指标的熟悉程度，甚至要超过我对我家厨房里碗和调羹的个数和我家冰箱里还剩下多少杯酸奶。</p>
+
+<p>最近做了一个比较大的改动，从测试的数据来看，效果不错。所以把中间的细节整理了一下：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -169,6 +218,10 @@
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">hadoop rpc异步返回机制，大幅降低namenode processTime和queueTime</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">跟facebook工程师交流HDFS笔记整理</a>
