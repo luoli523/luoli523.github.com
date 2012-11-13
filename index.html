@@ -9,7 +9,7 @@
   <meta name="author" content="罗李">
 
   
-  <meta name="description" content="11月09日，公司内部，不管是北京还是杭州，都弥漫着一股“山雨欲来风满楼”的氛围。所有的人所有的团队，都已经整装代发。核心系统部的同事早早的就开赴杭州了。我也独自上路，跟杭州云梯的兄弟们并肩作战 ">
+  <meta name="description" content="这个问题很隐晦，很难发现，而且通常也不会造成什么大的问题，但是当集群规模非常大，势必fsimage也会逐渐膨胀，那么当SecondaryNameNode做checkpoint的时候，效率会比fix这个问题的版本要低，带来的网络消耗也会比fix这个问题的版本要大。 会触发这个性能隐患有几个条件： &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,61 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-13T22:41:00+08:00" pubdate data-updated="true">Nov 13<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>这个问题很隐晦，很难发现，而且通常也不会造成什么大的问题，但是当集群规模非常大，势必fsimage也会逐渐膨胀，那么当SecondaryNameNode做checkpoint的时候，效率会比fix这个问题的版本要低，带来的网络消耗也会比fix这个问题的版本要大。</p>
+
+<p>会触发这个性能隐患有几个条件：</p>
+
+<ol>
+<li>hadoop版本刚好有这个问题(0.20.2以及以前的版本/cdh3u0)</li>
+<li>namenode的fsimage和edits log写入点配置多个，并且包括一个NFS写入点（比如dfs.name.dir=/path/on/local,/path/to/nfs）</li>
+<li>NFS远程的mount点刚好在SNN的local磁盘上</li>
+<li>fsimage非常的大（云梯已经接近40G了）</li>
+</ol>
+
+
+<p>如下图所示：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -308,6 +363,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/11/10/11-dot-11gen-tong-shi-men-bing-jian-zhen-shou-yun-ti/">11.11跟同事们并肩镇守云梯</a>
       </li>
     
@@ -321,10 +380,6 @@
     
       <li class="post">
         <a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">跟facebook工程师交流HDFS笔记整理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/">新博客，第一篇，写给云梯</a>
       </li>
     
   </ul>

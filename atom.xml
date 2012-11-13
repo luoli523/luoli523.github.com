@@ -4,7 +4,7 @@
   <title><![CDATA[luoli523]]></title>
   <link href="http://luoli523.github.com/atom.xml" rel="self"/>
   <link href="http://luoli523.github.com/"/>
-  <updated>2012-11-12T12:06:23+08:00</updated>
+  <updated>2012-11-13T23:05:58+08:00</updated>
   <id>http://luoli523.github.com/</id>
   <author>
     <name><![CDATA[罗李]]></name>
@@ -12,6 +12,119 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈]]></title>
+    <link href="http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/"/>
+    <updated>2012-11-13T22:41:00+08:00</updated>
+    <id>http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-[?]-ge-xing-neng-ping-jing</id>
+    <content type="html"><![CDATA[<p>这个问题很隐晦，很难发现，而且通常也不会造成什么大的问题，但是当集群规模非常大，势必fsimage也会逐渐膨胀，那么当SecondaryNameNode做checkpoint的时候，效率会比fix这个问题的版本要低，带来的网络消耗也会比fix这个问题的版本要大。</p>
+
+<p>会触发这个性能隐患有几个条件：</p>
+
+<ol>
+<li>hadoop版本刚好有这个问题(0.20.2以及以前的版本/cdh3u0)</li>
+<li>namenode的fsimage和edits log写入点配置多个，并且包括一个NFS写入点（比如dfs.name.dir=/path/on/local,/path/to/nfs）</li>
+<li>NFS远程的mount点刚好在SNN的local磁盘上</li>
+<li>fsimage非常的大（云梯已经接近40G了）</li>
+</ol>
+
+
+<p>如下图所示：</p>
+
+<!-- more -->
+
+
+<p><img src="http://luoli523.github.com/static/nn-snn-checkpoint-nfs/nn-snn-mount.PNG" alt="nn-snn-mount" /></p>
+
+<p>如果集群再非常的繁忙，那么在很短的时间内，edits log也会被写的非常的大（云梯上不用一个小时就能写好几个G），那么这个问题就更加的凸显出来。</p>
+
+<p>以下说一说这个问题的始末：<br/>
+如下图所示，SNN在做checkpoint的时候，是如下一个流程：<br/>
+<img src="http://luoli523.github.com/static/nn-snn-checkpoint-nfs/nn-snn-checkpoint.PNG" alt="nn-snn-checkpoint" /></p>
+
+<p>简单说来，就如下几步：</p>
+
+<ol>
+<li>SNN调用NN的rollEditLog rpc接口，让NN将新的editlog写入到edits.new中</li>
+<li>SNN通过http从NN上下载fsimage</li>
+<li>SNN通过http从NN上下载edits</li>
+<li>SNN将下载来的fsimage和edits进行内存加载，并将内存中新加载的namespace重新save成一个新的fsimage</li>
+<li>SNN将新merge的fsimage通过http回传给NN</li>
+<li>SNN调用NN的rollFsImage rpc接口，完成这次checkpoint过程</li>
+</ol>
+
+
+<p>在这里，出现性能不优的地方在第2和第3步，也就是SNN从NN上下载fsimage和edits文件的时候。原因在于：<br/>
+如果满足以上所说的触发条件，那么当SNN从NN进行下载的时候，Namenode#FSImage中有这么一段代码：</p>
+
+<figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
+ <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>    <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * Return the name of the image file.</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="n">File</span> <span class="nf">getFsImageName</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">StorageDirectory</span> <span class="n">sd</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>       <span class="k">for</span> <span class="o">(</span><span class="n">Iterator</span><span class="o">&lt;</span><span class="n">StorageDirectory</span><span class="o">&gt;</span> <span class="n">it</span> <span class="o">=</span>  <span class="n">dirIterator</span><span class="o">(</span><span class="n">NameNodeDirType</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span> <span class="n">it</span><span class="o">.</span><span class="na">hasNext</span><span class="o">();)</span>
+</span><span class='line'>           <span class="n">sd</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="na">next</span><span class="o">();</span>
+</span><span class='line'>       <span class="k">return</span> <span class="nf">getImageFile</span><span class="o">(</span><span class="n">sd</span><span class="o">,</span> <span class="n">NameNodeFile</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这段代码中有一个问题，那就是，在返回fsimage文件的时候，是选择了最后一个写入点，而通常在配置dfs.name.dir这个选项的时候，很自然的会把本地磁盘写入点放在前面，将NFS的写入点放在后面（比如dfs.name.dir=/path/on/local,/path/to/nfs），这样，就会返回NFS的那个写入点给SNN进行读取和下载，造成的后果就是：SNN从NN的NFS写入点进行fsimage的读取，并下载到本地，而这个NFS的写入点本身是mount在SNN自己这台机器上的。所以，这样一个过程中，SNN是通过网络，从另外一台机器上访问自己机器上的目录，并再通过网络传回自己机器上。。。。。。</p>
+
+<p>以下是修改这个性能瓶颈的代码之前，SNN在做Checkpoint时的网络流量监控图：<br/>
+<img src="http://luoli523.github.com/static/nn-snn-checkpoint-nfs/snn-checkpoint-nfs-beforefix2.png" alt="snn-checkpoint-nfs-beforefix2" />
+从上图就可以很明显的发现，在进行下载的阶段（14：35那个高峰），SNN上的网络流量是即有In又有Out，而照正常逻辑，应该是只有In，没有Out才对，这里出现这样的原因，就是因为这个NFS的回环流量导致。</p>
+
+<p>要解决这个问题其实很简单，只要在刚才的代码里，在访问到第一个可用的写入点的时候就立刻返回，而不是遍历到最后一个即可。比如：</p>
+
+<figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
+ <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>    <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * Return the name of the image file.</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="n">File</span> <span class="nf">getFsImageName</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">StorageDirectory</span> <span class="n">sd</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="o">(</span><span class="n">Iterator</span><span class="o">&lt;</span><span class="n">StorageDirectory</span><span class="o">&gt;</span> <span class="n">it</span> <span class="o">=</span> <span class="n">dirIterator</span><span class="o">(</span><span class="n">NameNodeDirType</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span> <span class="n">it</span><span class="o">.</span><span class="na">hasNext</span><span class="o">();)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">sd</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="na">next</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">File</span> <span class="n">fsImage</span> <span class="o">=</span> <span class="n">getImageFile</span><span class="o">(</span><span class="n">sd</span><span class="o">,</span> <span class="n">NameNodeFile</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">sd</span><span class="o">.</span><span class="na">getRoot</span><span class="o">().</span><span class="na">canRead</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="n">fsImage</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span>
+</span><span class='line'>          <span class="k">return</span> <span class="n">fsImage</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>问题即可解决：<br/>
+以下是问题解决后再次进行checkpoint时的流量图：<br/>
+<img src="http://luoli523.github.com/static/nn-snn-checkpoint-nfs/snn-checkpoint-nfs-afterfix.png" alt="snn-checkpoint-nfs-afterfix" />
+非常的明显，在下载阶段，SNN上只有In的流量，没有了Out的流量。问题解决<br/>
+写在最后：其实类似这样的问题，要解决非常的简单，几行代码的修改就可以解决问题，但是，发现问题的过程需要非常好的监控系统和很细心的对线上系统能够各种运行情况的观察。更直接一点，需要的是对系统内部运行机制烂熟于胸的熟悉程度和对系统运行情况的密切关注，做到了这两点，就能发现更多这样的问题。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[11.11跟同事们并肩镇守云梯]]></title>

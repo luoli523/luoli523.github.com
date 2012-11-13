@@ -1,0 +1,370 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈 - luoli523</title>
+  <meta name="author" content="罗李">
+
+  
+  <meta name="description" content="这个问题很隐晦，很难发现，而且通常也不会造成什么大的问题，但是当集群规模非常大，势必fsimage也会逐渐膨胀，那么当SecondaryNameNode做checkpoint的时候，效率会比fix这个问题的版本要低，带来的网络消耗也会比fix这个问题的版本要大。 会触发这个性能隐患有几个条件： &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="luoli523" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">luoli523</a></h1>
+  
+    <h2>今朝有酒？奈何不醉</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:luoli523.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-13T22:41:00+08:00" pubdate data-updated="true">Nov 13<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>这个问题很隐晦，很难发现，而且通常也不会造成什么大的问题，但是当集群规模非常大，势必fsimage也会逐渐膨胀，那么当SecondaryNameNode做checkpoint的时候，效率会比fix这个问题的版本要低，带来的网络消耗也会比fix这个问题的版本要大。</p>
+
+<p>会触发这个性能隐患有几个条件：</p>
+
+<ol>
+<li>hadoop版本刚好有这个问题(0.20.2以及以前的版本/cdh3u0)</li>
+<li>namenode的fsimage和edits log写入点配置多个，并且包括一个NFS写入点（比如dfs.name.dir=/path/on/local,/path/to/nfs）</li>
+<li>NFS远程的mount点刚好在SNN的local磁盘上</li>
+<li>fsimage非常的大（云梯已经接近40G了）</li>
+</ol>
+
+
+<p>如下图所示：</p>
+
+<!-- more -->
+
+
+<p><img src="/static/nn-snn-checkpoint-nfs/nn-snn-mount.PNG" alt="nn-snn-mount" /></p>
+
+<p>如果集群再非常的繁忙，那么在很短的时间内，edits log也会被写的非常的大（云梯上不用一个小时就能写好几个G），那么这个问题就更加的凸显出来。</p>
+
+<p>以下说一说这个问题的始末：<br/>
+如下图所示，SNN在做checkpoint的时候，是如下一个流程：<br/>
+<img src="/static/nn-snn-checkpoint-nfs/nn-snn-checkpoint.PNG" alt="nn-snn-checkpoint" /></p>
+
+<p>简单说来，就如下几步：</p>
+
+<ol>
+<li>SNN调用NN的rollEditLog rpc接口，让NN将新的editlog写入到edits.new中</li>
+<li>SNN通过http从NN上下载fsimage</li>
+<li>SNN通过http从NN上下载edits</li>
+<li>SNN将下载来的fsimage和edits进行内存加载，并将内存中新加载的namespace重新save成一个新的fsimage</li>
+<li>SNN将新merge的fsimage通过http回传给NN</li>
+<li>SNN调用NN的rollFsImage rpc接口，完成这次checkpoint过程</li>
+</ol>
+
+
+<p>在这里，出现性能不优的地方在第2和第3步，也就是SNN从NN上下载fsimage和edits文件的时候。原因在于：<br/>
+如果满足以上所说的触发条件，那么当SNN从NN进行下载的时候，Namenode#FSImage中有这么一段代码：</p>
+
+<figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
+ <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>    <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * Return the name of the image file.</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="n">File</span> <span class="nf">getFsImageName</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>       <span class="n">StorageDirectory</span> <span class="n">sd</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>       <span class="k">for</span> <span class="o">(</span><span class="n">Iterator</span><span class="o">&lt;</span><span class="n">StorageDirectory</span><span class="o">&gt;</span> <span class="n">it</span> <span class="o">=</span>  <span class="n">dirIterator</span><span class="o">(</span><span class="n">NameNodeDirType</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span> <span class="n">it</span><span class="o">.</span><span class="na">hasNext</span><span class="o">();)</span>
+</span><span class='line'>           <span class="n">sd</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="na">next</span><span class="o">();</span>
+</span><span class='line'>       <span class="k">return</span> <span class="nf">getImageFile</span><span class="o">(</span><span class="n">sd</span><span class="o">,</span> <span class="n">NameNodeFile</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这段代码中有一个问题，那就是，在返回fsimage文件的时候，是选择了最后一个写入点，而通常在配置dfs.name.dir这个选项的时候，很自然的会把本地磁盘写入点放在前面，将NFS的写入点放在后面（比如dfs.name.dir=/path/on/local,/path/to/nfs），这样，就会返回NFS的那个写入点给SNN进行读取和下载，造成的后果就是：SNN从NN的NFS写入点进行fsimage的读取，并下载到本地，而这个NFS的写入点本身是mount在SNN自己这台机器上的。所以，这样一个过程中，SNN是通过网络，从另外一台机器上访问自己机器上的目录，并再通过网络传回自己机器上。。。。。。</p>
+
+<p>以下是修改这个性能瓶颈的代码之前，SNN在做Checkpoint时的网络流量监控图：<br/>
+<img src="/static/nn-snn-checkpoint-nfs/snn-checkpoint-nfs-beforefix2.png" alt="snn-checkpoint-nfs-beforefix2" />
+从上图就可以很明显的发现，在进行下载的阶段（14：35那个高峰），SNN上的网络流量是即有In又有Out，而照正常逻辑，应该是只有In，没有Out才对，这里出现这样的原因，就是因为这个NFS的回环流量导致。</p>
+
+<p>要解决这个问题其实很简单，只要在刚才的代码里，在访问到第一个可用的写入点的时候就立刻返回，而不是遍历到最后一个即可。比如：</p>
+
+<figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
+ <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'>    <span class="cm">/**</span>
+</span><span class='line'><span class="cm">     * Return the name of the image file.</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="n">File</span> <span class="nf">getFsImageName</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>      <span class="n">StorageDirectory</span> <span class="n">sd</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="o">(</span><span class="n">Iterator</span><span class="o">&lt;</span><span class="n">StorageDirectory</span><span class="o">&gt;</span> <span class="n">it</span> <span class="o">=</span> <span class="n">dirIterator</span><span class="o">(</span><span class="n">NameNodeDirType</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span> <span class="n">it</span><span class="o">.</span><span class="na">hasNext</span><span class="o">();)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">sd</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="na">next</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">File</span> <span class="n">fsImage</span> <span class="o">=</span> <span class="n">getImageFile</span><span class="o">(</span><span class="n">sd</span><span class="o">,</span> <span class="n">NameNodeFile</span><span class="o">.</span><span class="na">IMAGE</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">sd</span><span class="o">.</span><span class="na">getRoot</span><span class="o">().</span><span class="na">canRead</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="n">fsImage</span><span class="o">.</span><span class="na">exists</span><span class="o">())</span>
+</span><span class='line'>          <span class="k">return</span> <span class="n">fsImage</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>问题即可解决：<br/>
+以下是问题解决后再次进行checkpoint时的流量图：<br/>
+<img src="/static/nn-snn-checkpoint-nfs/snn-checkpoint-nfs-afterfix.png" alt="snn-checkpoint-nfs-afterfix" />
+非常的明显，在下载阶段，SNN上只有In的流量，没有了Out的流量。问题解决<br/>
+写在最后：其实类似这样的问题，要解决非常的简单，几行代码的修改就可以解决问题，但是，发现问题的过程需要非常好的监控系统和很细心的对线上系统能够各种运行情况的观察。更直接一点，需要的是对系统内部运行机制烂熟于胸的熟悉程度和对系统运行情况的密切关注，做到了这两点，就能发现更多这样的问题。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">罗李</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-13T22:41:00+08:00" pubdate data-updated="true">Nov 13<span>th</span>, 2012</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <span>
+  <iframe 
+    width="86" 
+    scrolling="no" 
+    height="16" 
+    frameborder="0" 
+    src=
+      "http://hits.sinajs.cn/A1/weiboshare.html?url=http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/&amp;type=6&amp;ralateUid=1733934700&amp;language=zh_cn" allowtransparency="true">
+  </iframe>
+  </span>
+  
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/" data-via="" data-counturl="http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/" >Tweet</a>
+  
+  
+  
+</div>
+<hr style="border-bottom:1px dotted #bdbabd;height:1px;border-top:0px;border-left:0px;border-right:0px;" />
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/11/10/11-dot-11gen-tong-shi-men-bing-jian-zhen-shou-yun-ti/" title="Previous Post: 11.11跟同事们并肩镇守云梯">&laquo; 11.11跟同事们并肩镇守云梯</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/10/11-dot-11gen-tong-shi-men-bing-jian-zhen-shou-yun-ti/">11.11跟同事们并肩镇守云梯</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/08/hadoopzuo-ye-diao-you-can-shu-zheng-li/">hadoop作业调优参数整理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">hadoop rpc异步返回机制，大幅降低namenode processTime和queueTime</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">跟facebook工程师交流HDFS笔记整理</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+<section>
+  <h1>Sina Weibo</h1>
+  <ul id="weibo">
+    <li>
+      <iframe 
+        width="100%" 
+        height="550" 
+        class="share_self" 
+        frameborder="0" 
+        scrolling="no" 
+        src="http://widget.weibo.com/weiboshow/index.php?width=0&height=550&ptype=1&speed=0&skin=&isTitle=0&noborder=1&isWeibo=1&isFans=&uid=1733934700&verifier=38a203e4">
+      </iframe>
+    </li>
+  </ul>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - 罗李 -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'luoli523';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/';
+        var disqus_url = 'http://luoli523.github.com/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
