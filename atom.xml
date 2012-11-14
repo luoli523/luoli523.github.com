@@ -4,7 +4,7 @@
   <title><![CDATA[luoli523]]></title>
   <link href="http://luoli523.github.com/atom.xml" rel="self"/>
   <link href="http://luoli523.github.com/"/>
-  <updated>2012-11-14T21:35:31+08:00</updated>
+  <updated>2012-11-14T22:57:04+08:00</updated>
   <id>http://luoli523.github.com/</id>
   <author>
     <name><![CDATA[罗李]]></name>
@@ -12,6 +12,198 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[datanode下线对集群带宽影响调研]]></title>
+    <link href="http://luoli523.github.com/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/"/>
+    <updated>2012-11-14T22:13:00+08:00</updated>
+    <id>http://luoli523.github.com/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan</id>
+    <content type="html"><![CDATA[<p>这是我两年前做的一个调研和测试，数据和集群规模有点老了，但是结论是有参考价值的。供大家参考。</p>
+
+<h3>背景介绍</h3>
+
+<p>在hadoop集群中，当一个datanode发生故障（宕机，进程被kill，网络不通等）时，namenode在一定时间内（默认10分30秒）无法收到该datanode的心跳信息，就会将该datanode从集群中下线。这样带来的影响是，保存在这台datanode上的所有block副本就需要复制到其他的datanode上去，以保证这些block的冗余副本数满足其期望的副本数（默认3）。 <br/>
+按照以上逻辑，一台datanode的下线肯定会造成集群内部各个datanode之间互相的复制block的情况，进而会带来一定的集群内部网络带宽消耗，虽然很多人都知道这个逻辑，但是具体到实际情况下，一台datanode下线对集群的网络带宽影响是一个什么样的程度，HDFS到底是怎么样进行block复制的，是否有带宽限制，如何进行限速配置等等，这些具体问题一直没有非常明确的数据。本次调研就是为了解决这个问题，对datanode下线对HDFS集群的带宽影响做一个比较详细的评估和测试。</p>
+
+<h3>Datanode下线逻辑</h3>
+
+<p>一台datanode下线的逻辑流程如下图所示：</p>
+
+<!-- more -->
+
+
+<p><img src="http://luoli523.github.com/static/dn-decom/datanode-decommission.PNG" alt="datanode-decommission" /></p>
+
+<p>上图步骤详细操作如下：</p>
+
+<ol>
+<li>Datanode1发生异常，无法正常服务，该datanode1往namenode的heartbeat中断（这一过程还有一种可能性是集群管理员通过dfsadmin –refreshNode对某台datanode进行人为的decommission下线，这种情况并不是datanode发生异常，而是管理员的人为调整，但原理是一样）</li>
+<li>namendoe内部现成发现datanode1的heartbeat过期（或是管理员人为对某个datanode进行了下线），从namenode内部对datanode1进行下线</li>
+<li>namenode从内部数据结构中获取保存在datanode1上的所有blocks的id号，假设名为dn1blocks。</li>
+<li>namenode遍历dn1blocks，对每一个block，都选择一个srcNode（保存有该block一个副本的datanode）和一个destNode（没有保存该block副本的一个datanode），然后发送copyBlock命令到srcNode</li>
+<li>srcNode将该block拷贝到destNode</li>
+</ol>
+
+
+<p>从以上过程可以看出，实际上，当HDFS下线一台datanode的时候，对网络带宽的消耗主要来自<strong>datanode之间相互的block拷贝</strong>过程.</p>
+
+<h3>Datanode之间block拷贝逻辑</h3>
+
+<p>Datanode之间的block相互拷贝逻辑如下： <br/>
+<img src="http://luoli523.github.com/static/dn-decom/datanode-copyblock.PNG" alt="datanode-copyblock" /></p>
+
+<p>从上图可以看出，datanode之间做block相互拷贝的途径有两个：</p>
+
+<ol>
+<li><p>在数据写入的pipeline中从一个datanode向下一个datanode发送block数据。这条路径中，Datanode的内部服务线程DataXceiverServer在启动的时候就初始化了一个叫做balanceThrottler 的BlockBalanceThrottler类型变量，这个变量主要作用是用来控制datanode在做相互之间的block拷贝时对带宽的限制。 <br/>
+<img src="http://luoli523.github.com/static/dn-decom/code1.PNG" alt="code1" /></p>
+
+<p>   Datanode接到OP_COPY_BLOCK命令后，就会将本机上的block通过网络拷贝到另外一台datanode上去（destNode），而每一次进行copyBlock时，在block数据的传输过程中，都会通过balanceThrottler变量来对copyBlock造成的数据流量和copyBlock线程数进行限制。只有满足以下条件，copyBlock才能顺利执行：</p>
+
+<ol>
+<li><strong>当前进行block copy的线程数不能大于5个 </strong></li>
+<li><strong>一定时间周期内从该datanode传输数据的速率不能超过一定的阈值</strong>（dfs.balance.bandwidthPerSec，默认1MB/s）<br/>
+如果不同时满足以上条件，那么该datanode在一定时间周期内就不会进行block copy的数据传输。</li>
+</ol>
+</li>
+<li><p>另一条block copy的路径为：从Namenode接收Block Transfer cmd，然后Datanode launch一个DataTransfer线程来从该datanode发送block到另外一个datanode。如上图Datanode下方的DataTransfer所示。<strong>从这条路径发起的block拷贝从代码中是没有受到上述balanceThrottler的网络流量限制的。</strong> <br/>
+<img src="http://luoli523.github.com/static/dn-decom/code2.PNG" alt="code2" /></p>
+
+<p>   而在集群中，datanode下线的时候，实际上将下线DN上的blocks拷贝到其他datanodes上的操作走的是上述的第二条路径（包括集群管理员人为的通过refreshNode对某台datanode进行人为下线的情况），也就是说：<strong>datanode下线后进行的block copy过程时，bandwidthPerSec的带宽限制并没有生效。因此，Datanode下线，是有可能引起集群大量内部数据拷贝，造成网络带宽激增的。</strong></p></li>
+</ol>
+
+
+<h3>模拟测试</h3>
+
+<p>本测试的目的在于：评估在datanode下线的情况下，真实的集群环境中，会对集群内部带宽带来多大的影响，balanceThrottler的配置限制是否起了作用，是否会造成集群内部的网络block拷贝风暴，是否会影响HDFS的正常服务。 <br/>
+本次测试模拟线上集群的环境，云梯HDFS目前的现状如下：<br/>
+-  live datanode：1996(两年前的测试，当时云梯才2000台) <br/>
+-  平均每台datanode包含blocks数：219127 <br/>
+模拟集群环境为：<br/>
+-  live datanode：20 <br/>
+-  平均每台datanode包含blocks数：10932
+<img src="http://luoli523.github.com/static/dn-decom/live-node.PNG" alt="live-node" /></p>
+
+<p>根据云梯HDFS环境和测试集群HDFS环境的等比换算，测试集群上每个datanode应该包含的blocks数应该是2195个，这里模拟datanode下线时，每台datanode平均包含的blocks数要远大于2195，这样可以更好的评估当下线datanode包含大量blocks时，对集群网络带宽造成的影响。</p>
+
+<h4>测试方式</h4>
+
+<p>模拟方式如下：</p>
+
+<ol>
+<li>往测试集群的HDFS中灌入数据，观察数据大量写入时的网络情况和各种性能</li>
+<li>数据灌入并稳定后，将其中一台datanode停掉，并等待该datanode从namenode中下线</li>
+<li>当namenode下线datanode时，开始每隔一秒对namenode进行dfsadmin –metasave操作，记录下每一秒钟内namenode内部的needed replication blocks数和pending replication blocks数，以此来确定每秒钟集群完成多少个blocks的copy。</li>
+<li>同时记录在copy blocks时各个datanode的网络带宽占用情况，看是否超过了balanceThrottler设定的阈值</li>
+<li>调整balanceThrottler，重复以上过程，确认balanceThrottler在datanode下线的block拷贝中并没有起到限流作用。</li>
+</ol>
+
+
+<h4>运行结果</h4>
+
+<h5>16MBlockSize balanceThrottler 10M/s</h5>
+
+<ul>
+<li>blocksize：16MB</li>
+<li>balanceThrottler：10MB/s <br/>
+下线测试集群中的dw1，包含blocks数为22501个，过程数据记录如下：</li>
+<li>过程耗时：35分27秒 (11:38:08~12:13:35)</li>
+<li>namenode内部block调度情况：<br/>
+从namenode每秒钟的metasave日志可以发现，每一秒钟还有多少个blocks等待进行copy transfer的详细记录。节选日志如下：</li>
+</ul>
+
+
+<p><img src="http://luoli523.github.com/static/dn-decom/network1.PNG" alt="network1" /></p>
+
+<p>统计该metasave日志，结果如下：<br/>
+-  整个block transfer过程：<strong>2127</strong>秒 <br/>
+-  拷贝blocks数：<strong>22501</strong>个</p>
+
+<p>datanode网络流量监控：
+以下是下线datanode以外的其他datanode在block transfer过程中的网络数据流量监控图：</p>
+
+<p><img src="http://luoli523.github.com/static/dn-decom/net-monitor1.PNG" alt="net-monitor1" />
+<img src="http://luoli523.github.com/static/dn-decom/net-monitor2.PNG" alt="net-monitor2" /></p>
+
+<p>其他datanode基本相似。从以上各datanode在block拷贝的过程中可以很明显的看出， <strong>由于blocksize只有16M，基本上每个block在一秒多钟左右就能传输完，且由于namenode中的配置选项dfs.max-repl-streams是默认的2，也就是说同一时间namenode只能向datanode发送2个block的copy命令，整个block copy过程消耗的带宽基本稳定在10MB/s上下。</strong></p>
+
+<p>另外，通过对datanode上用来做数据传输的网卡本身流量进行监控，监控日志数据节选如下：</p>
+
+<p><img src="http://luoli523.github.com/static/dn-decom/network2.PNG" alt="network2" /></p>
+
+<p>以上日志是通过在其中一台正常服务的datanode上通过监控程序获取的bond0网卡的流量日志，每一行之间间隔一秒钟，统计结果如下：<br/>
+<img src="http://luoli523.github.com/static/dn-decom/network3.PNG" alt="network3" /></p>
+
+<p><strong>从以上统计也可以非常明显的看出，在做block copy的这段时间内，bond0网卡的input KB/s流量为：10261.6 kBytes/s，output KB/s 流量为：9887 kBytes/s，跟10MB/s的datanode block copy网络流量限速基本吻合。</strong></p>
+
+<h5>64MBlockSize balanceThrottler 20M/s</h5>
+
+<ul>
+<li>blocksize：64MB</li>
+<li>balanceThrottler：20MB/s <br/>
+下线测试集群中的dw1，包含blocks数为5791个，过程数据记录如下：<br/>
+过程耗时：9分20秒（17:56:59～18:06:19）<br/>
+namenode内部block调度情况：<br/>
+从namenode每秒钟的metasave日志可以发现，每一秒钟还有多少个blocks等待进行copy transfer的详细记录。节选日志如下：</li>
+</ul>
+
+
+<p><img src="http://luoli523.github.com/static/dn-decom/network4.PNG" alt="network4" /></p>
+
+<p>统计该metasave日志，结果如下：<br/>
+整个block transfer过程：<strong>560</strong>秒 <br/>
+拷贝blocks数：<strong>5791</strong>个</p>
+
+<p>datanode网络流量监控：<br/>
+以下是下线datanode以外的其他datanode在block transfer过程中的网络数据流量监控图：</p>
+
+<p><img src="http://luoli523.github.com/static/dn-decom/net-monitor3.PNG" alt="net-monitor3" />
+<img src="http://luoli523.github.com/static/dn-decom/net-monitor4.PNG" alt="net-monitor4" /></p>
+
+<p>另外，从网卡流量监控脚本的监控数据来看，日志节选如下：</p>
+
+<p><img src="http://luoli523.github.com/static/dn-decom/network5.PNG" alt="network5" /></p>
+
+<p>从以上统计也可以非常明显的看出，在做block copy的这段时间内，bond0网卡的input KB/s流量为：<strong>39895.9</strong> kBytes/s，output KB/s 流量为：<strong>40049</strong> kBytes/s。这个值跟ganglia监控图上的流量统计基本符合。</p>
+
+<h5>128MBlockSize balanceThrottler 20M/s</h5>
+
+<ul>
+<li>blocksize：128MB</li>
+<li>balanceThrottler：20MB/s <br/>
+下线测试集群中的dw1，包含blocks数为5757个，过程数据记录如下：<br/>
+过程耗时：12分22秒（10:29:12 ～10:41:34）<br/>
+统计该metasave日志，结果如下：</li>
+<li>整个block transfer过程：742秒</li>
+<li>拷贝blocks数：5757个 <br/>
+以下是下线datanode以外的其他datanode在block transfer过程中的网络数据流量监控图：</li>
+</ul>
+
+
+<p><img src="http://luoli523.github.com/static/dn-decom/net-monitor4.PNG" alt="net-monitor5" /></p>
+
+<p>另外，从网卡流量监控脚本的监控数据来看，日志节选如下：</p>
+
+<p><img src="http://luoli523.github.com/static/dn-decom/network6.PNG" alt="network6" /></p>
+
+<p>从以上统计也可以非常明显的看出，在做block copy的这段时间内，bond0网卡的input KB/s流量为：<strong>57197.3</strong> kBytes/s，output KB/s 流量为：<strong>56385.1</strong> kBytes/s。这个值跟ganglia监控图上的流量统计基本符合。</p>
+
+<h3>总结</h3>
+
+<p>根据blocksize的不同整理对比如下：<br/>
+<img src="http://luoli523.github.com/static/dn-decom/summary.PNG" alt="summary" /></p>
+
+<ol>
+<li>dfs.balance.bandwidthPerSec（默认1MB/s）配置选项只能用来限制在pipeline的情况下或者做Balancer的情况下block copy所占用的datanode网络带宽，没有办法限制在datanode下线时造成的block copy产生的网络带宽</li>
+<li>dfs.max-repl-streams（默认2）配置选项能够影响datanode下线时每个datanode同时能够进行多少个block的并行拷贝，调大该选项有利于加速datanode下线时的block copy。但是同时也会增加datanode下线对带宽的更高占用，进而有可能对应用程序产生影响。鉴于以上测试数据，建议非特殊情况不要调大。</li>
+<li>BlockSize的大小在block copy过程中对带宽的占用是有影响的，block size越大，datanode花费在socket初始化上的时间越少，数据的传输在一定时间内对网络带宽的消耗会更加高一些。当block到128MB甚至更大时，block copy产生的带宽将非常可观。</li>
+<li>集群的规模越大，有利于缓解在datanode下线产生的大量block copy的过程中带来的带宽占用的时间，因为datanode越多，分到每个datanode上进行block copy的命令就相应较少。</li>
+<li>多台datanode下线跟一台datanode下线的情况的区别仅仅在于在namenode内部，要进行block copy的block变多了，本质上，这一过程只跟需要进行transfer的block相关，跟下线datanode的台数无关。</li>
+<li>下线的datanode上保存的block越多，造成的影响时间会越久。</li>
+</ol>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈]]></title>

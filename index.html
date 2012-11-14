@@ -9,7 +9,7 @@
   <meta name="author" content="罗李">
 
   
-  <meta name="description" content="这个问题很隐晦，很难发现，而且通常也不会造成什么大的问题，但是当集群规模非常大，势必fsimage也会逐渐膨胀，那么当SecondaryNameNode做checkpoint的时候，效率会比fix这个问题的版本要低，带来的网络消耗也会比fix这个问题的版本要大。 会触发这个性能隐患有几个条件： &hellip;">
+  <meta name="description" content="这是我两年前做的一个调研和测试，数据和集群规模有点老了，但是结论是有参考价值的。供大家参考。 背景介绍 在hadoop集群中，当一个datanode发生故障（宕机，进程被kill，网络不通等）时，namenode在一定时间内（默认10分30秒）无法收到该datanode的心跳信息， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,58 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/">Datanode下线对集群带宽影响调研</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-14T22:13:00+08:00" pubdate data-updated="true">Nov 14<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>这是我两年前做的一个调研和测试，数据和集群规模有点老了，但是结论是有参考价值的。供大家参考。</p>
+
+<h3>背景介绍</h3>
+
+<p>在hadoop集群中，当一个datanode发生故障（宕机，进程被kill，网络不通等）时，namenode在一定时间内（默认10分30秒）无法收到该datanode的心跳信息，就会将该datanode从集群中下线。这样带来的影响是，保存在这台datanode上的所有block副本就需要复制到其他的datanode上去，以保证这些block的冗余副本数满足其期望的副本数（默认3）。 <br/>
+按照以上逻辑，一台datanode的下线肯定会造成集群内部各个datanode之间互相的复制block的情况，进而会带来一定的集群内部网络带宽消耗，虽然很多人都知道这个逻辑，但是具体到实际情况下，一台datanode下线对集群的网络带宽影响是一个什么样的程度，HDFS到底是怎么样进行block复制的，是否有带宽限制，如何进行限速配置等等，这些具体问题一直没有非常明确的数据。本次调研就是为了解决这个问题，对datanode下线对HDFS集群的带宽影响做一个比较详细的评估和测试。</p>
+
+<h3>Datanode下线逻辑</h3>
+
+<p>一台datanode下线的逻辑流程如下图所示：</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
   
   
     <article>
@@ -367,6 +419,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/">datanode下线对集群带宽影响调研</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈</a>
       </li>
     
@@ -380,10 +436,6 @@
     
       <li class="post">
         <a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">hadoop rpc异步返回机制，大幅降低namenode processTime和queueTime</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">跟facebook工程师交流HDFS笔记整理</a>
       </li>
     
   </ul>
