@@ -4,7 +4,7 @@
   <title><![CDATA[luoli523]]></title>
   <link href="http://luoli523.github.com/atom.xml" rel="self"/>
   <link href="http://luoli523.github.com/"/>
-  <updated>2012-11-26T17:01:38+08:00</updated>
+  <updated>2012-12-27T15:08:10+08:00</updated>
   <id>http://luoli523.github.com/</id>
   <author>
     <name><![CDATA[罗李]]></name>
@@ -12,6 +12,105 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[云梯集群FileNotFound灵异事件追查始末]]></title>
+    <link href="http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/"/>
+    <updated>2012-12-27T14:43:00+08:00</updated>
+    <id>http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo</id>
+    <content type="html"><![CDATA[<p>集群最近出现了一个非常诡异的现象，问题的表象如下：</p>
+
+<figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
+ <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="mi">2012</span><span class="o">-</span><span class="mi">12</span><span class="o">-</span><span class="mi">04</span> <span class="mi">01</span><span class="o">:</span><span class="mi">23</span><span class="o">:</span><span class="mi">30</span><span class="o">,</span><span class="mi">225</span> <span class="n">INFO</span> <span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">hadoop</span><span class="o">.</span><span class="na">ipc</span><span class="o">.</span><span class="na">Server</span><span class="o">:</span> <span class="n">IPC</span> <span class="n">Server</span> <span class="n">handler</span> <span class="mi">32</span> <span class="n">on</span> <span class="mi">9001</span><span class="o">,</span> <span class="n">call</span> <span class="n">submitJob</span><span class="o">(</span><span class="n">job_201211151327_2801259</span><span class="o">)</span> <span class="n">from</span> <span class="mf">172.24</span><span class="o">.</span><span class="mf">208.67</span><span class="o">:</span><span class="mi">52961</span><span class="o">:</span> <span class="nl">error:</span> <span class="n">java</span><span class="o">.</span><span class="na">io</span><span class="o">.</span><span class="na">FileNotFoundException</span><span class="o">:</span> <span class="n">File</span> <span class="n">does</span> <span class="n">not</span> <span class="nl">exist:</span> <span class="nl">hdfs:</span><span class="c1">//hdpnn:9000/home/hadoop/cluster-data/mapred/system/job_201211151327_2801259/job.xml</span>
+</span><span class='line'><span class="n">java</span><span class="o">.</span><span class="na">io</span><span class="o">.</span><span class="na">FileNotFoundException</span><span class="o">:</span> <span class="n">File</span> <span class="n">does</span> <span class="n">not</span> <span class="nl">exist:</span> <span class="nl">hdfs:</span><span class="c1">//hdpnn:9000/home/hadoop/cluster-data/mapred/system/job_201211151327_2801259/job.xml</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">hadoop</span><span class="o">.</span><span class="na">hdfs</span><span class="o">.</span><span class="na">DistributedFileSystem</span><span class="o">.</span><span class="na">getFileStatus</span><span class="o">(</span><span class="n">DistributedFileSystem</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">483</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">hadoop</span><span class="o">.</span><span class="na">mapred</span><span class="o">.</span><span class="na">JobInProgress</span><span class="o">.&lt;</span><span class="n">init</span><span class="o">&gt;(</span><span class="n">JobInProgress</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">303</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">hadoop</span><span class="o">.</span><span class="na">mapred</span><span class="o">.</span><span class="na">JobTracker</span><span class="o">.</span><span class="na">submitJob</span><span class="o">(</span><span class="n">JobTracker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">3120</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">hadoop</span><span class="o">.</span><span class="na">mapred</span><span class="o">.</span><span class="na">JobTracker</span><span class="o">.</span><span class="na">submitJob</span><span class="o">(</span><span class="n">JobTracker</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">3084</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">sun</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">GeneratedMethodAccessor54</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Unknown</span> <span class="n">Source</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">sun</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">DelegatingMethodAccessorImpl</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">DelegatingMethodAccessorImpl</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">25</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">.</span><span class="na">Method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">Method</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">597</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">hadoop</span><span class="o">.</span><span class="na">ipc</span><span class="o">.</span><span class="na">RPC</span><span class="n">$Server</span><span class="o">.</span><span class="na">call</span><span class="o">(</span><span class="n">RPC</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">481</span><span class="o">)</span>
+</span><span class='line'><span class="err">       </span> <span class="n">at</span> <span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">hadoop</span><span class="o">.</span><span class="na">ipc</span><span class="o">.</span><span class="na">Server</span><span class="n">$Handler</span><span class="o">.</span><span class="na">run</span><span class="o">(</span><span class="n">Server</span><span class="o">.</span><span class="na">java</span><span class="o">:</span><span class="mi">1147</span><span class="o">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>从异常日志上来看，好象是说在提交job的时候，由于某个文件不存在，导致job提交失败。但深入调查发现：报不存在的那个文件，实际上早就存在了。有的时候，那个文件可能是几个星期前就已经写入到HDFS上了，却在某个时间发生这种问题。表现出来的现象就是这种File Not Found Exception。</p>
+
+<p>从经验上来看，很有可能是由于同步问题导致，但令我们百思不得其解的是：<strong><em>如果是同步问题造成，那么可以解释刚创建的文件马上去getFileInfo会出现类似的现象，但无法解释很久以前就存在的文件还会报这种错误。</em></strong>这个问题在我们的集群上隐藏了很长时间，岁素想尽了各种办法都没有找到最终的原因，只能让失败的job重跑。更令人崩溃的是，重跑能重现的概率极低，导致我们线下模拟变得非常的困难。 不过功夫不负有心人，经过非常非常苦逼的各种蛛丝马迹的分析和模拟，终于找到了底层最终的原因。</p>
+
+<!-- more -->
+
+
+<h3>疑惑：</h3>
+
+<p>这个bug是一个同步问题的bug，简单的说就是：namenode中所有对文件系统进行访问（读/写）都是加锁了，不修改namespace操作的加读 锁（getListing, getBlockLocations等），修改namespace结构的加读锁（mkdir，rename，create，delete等），唯一的一个 没有就是getFileInfo。之前怀疑就是因为这个同步问题造成的上述问题，但所有的表象中，最后剩下一个现象一直没法得到很合理的解释，那就是：</p>
+
+<figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
+ <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="err"> </span> <span class="mi">10</span> <span class="n">jiangxiaohui</span> <span class="n">cug</span><span class="o">-</span><span class="n">admin</span><span class="err">   </span> <span class="mi">8302325</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">11</span><span class="o">-</span><span class="mi">15</span> <span class="mi">13</span><span class="o">:</span><span class="mi">34</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">hadoop</span><span class="o">/</span><span class="n">cluster</span><span class="o">-</span><span class="n">data</span><span class="o">/</span><span class="n">mapred</span><span class="o">/</span><span class="n">system</span><span class="o">/</span><span class="n">shared_cache</span><span class="o">/</span><span class="mi">3</span><span class="n">ec34669545c607f549b291ddd490d4f_jython</span><span class="o">.</span><span class="na">jar</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>报文件不存在的这个文件，实际上在很早的时候就已经在HDFS的DistributedCache目录中了，job初始化的时候没有修改过，所以即使是同步问题，也无法解释很早就存在的文件为何get不到info。</p>
+
+<p>另外由于这个问题在测试环境中一直没有找到稳定重现的办法，所以之前的调查只能说怀疑跟这个地方有关，但无法下绝对的结论。</p>
+
+<h3>重现：</h3>
+
+<p>经过对所有出现类似这种现象的日志进行观察，发现很大部分出现都是在对 /home/hadoop/cluster-data/mapred/system/shared_cache 这个目录下的文件进行getFileInfo的时候出现的，这个目录是云梯上的DistributedCache目录，他的特点是：</p>
+
+<ol>
+<li>对该目录下的文件 进行ls操作非常的频繁；</li>
+<li>在这个目录下进行getFileInfo的时候，随时可能还有其他的进程往这个目录里增删文件或者目录。</li>
+</ol>
+
+
+<p>同时基于对某天出错时间点前后的 mapred/system目录以及mapred/system/shared_cache目录的audit log进行观察发现，虽然没有对3ec34669545c607f549b291ddd490d4f_jython.jar这个文件的修改操作，但那段时 间有比较频繁的对shared_cache目录下文件的增删操作。基于上述特点，我写了两个job尝试重现这种现象：</p>
+
+<ol>
+<li>在实验集群上创建一个文件： /home/hadoop/cluster-data/mapred/system/shared_cache/3ec34669545c607f549b291ddd490d4f_jython.jar</li>
+<li>jobA：并行跑540个map，在map中循环不断的对这个文件进行getFileInfo操作（while true），其他什么都不干</li>
+<li>jobB：并行跑100个map，在map中不停的对mapred/system目录以及mapred/system/shared_cache目录进行文件的增删操作，循环往复。   <br/>
+两个job都没有动过3ec34669545c607f549b291ddd490d4f_jython.jar文件，但运行一段时间后，问题重现了。</li>
+</ol>
+
+
+<p><img src="http://luoli523.github.com/static/getFileInfo_Bug/FileNotFoundException.png" alt="FileNotFoundException" /></p>
+
+<h3>分析原因：</h3>
+
+<p>重现以后，进一步跟踪，终于找到了深层次最终根本的原因。</p>
+
+<p><img src="http://luoli523.github.com/static/getFileInfo_Bug/IndexOutOfBoundException.png" alt="IndexOutOfBoundException" /></p>
+
+<p>namenode内部的namespace目录树结构是由一个一个的Inode组成，如果是目录，那么目录下的子INode是用一个children数组 保存的，所以要对一个目录下的某个文件进行getFileInfo操作，实际上就是找到那个目录的INode，并对该INode下的children数组 进行二分查找。出现问题的情况原因是：
+由于getFileInfo没有加directory的读锁，导致在getFileInfo的时候，当对children数组进行二分查找时，并不是一个 排他的查找，有可能在查找的过程中，children数组内的内容以及发生了变化，可能多了一个或多个child，也可能少了几个，这样当 getFileInfo找到某个文件在children数组中的index，并尝试去get(idx)时，这两个操作之间如果发生了children变 化，同时该变化还导致了该文件在children中的index发生了变化，或者向上述日志一样直接就数组越界，就有可能造成getFileInfo的返 回不准确。</p>
+
+<h3>解决：</h3>
+
+<p>找到了深层次的原因，解决起来就比较好办了，patch修改如下：</p>
+
+<p><img src="http://luoli523.github.com/static/getFileInfo_Bug/getFileInfo_patch.png" alt="getFileInfo_patch" /></p>
+
+<p><img src="http://luoli523.github.com/static/getFileInfo_Bug/getFileInfo_patch2.png" alt="getFileInfo_patch2" /></p>
+
+<p>PS:<strong><em>patch的修改是基于淘宝云梯集群的代码，并不一定适用于其他base版本。需要特别提出的是：我们的hadoop版本处于性能的原因做了很多的优化，性能提升的同时也带来了一些寻常集群没有碰到过的问题，如果你的集群用的是CDH3,甚至CDH4的版本，里面namenode内部仍然用的是全局锁，性能虽然不高（相对而言），但通常不会出现这种问题</em></strong></p>
+
+<p>问过facebook的同行，他们同样存在这个问题，只不过他们的提交作业场景跟我们不太一样，所以发生的频率没我们这么高，上个月他们fix了这个问题，我们的代码也在上个月fix了这个问题（http://reviewboard.dev.sd.aliyun.com/ReviewBoard/r/68258/），我用fix后的版本再次运行job，再也没有出现过上述现象。​</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[datanode下线对集群带宽影响调研]]></title>

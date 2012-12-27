@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>luoli523</title>
+  <title>云梯集群FileNotFound灵异事件追查始末 - luoli523</title>
   <meta name="author" content="罗李">
 
   
@@ -29,7 +29,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://luoli523.github.com/">
+  <link rel="canonical" href="http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -73,15 +73,12 @@
 </nav>
   <div id="main">
     <div id="content">
-      <div class="blog-index">
+      <div>
+<article class="hentry" role="article">
   
-  
-  
-    <article>
-      
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/">云梯集群FileNotFound灵异事件追查始末</a></h1>
+      <h1 class="entry-title">云梯集群FileNotFound灵异事件追查始末</h1>
     
     
       <p class="meta">
@@ -99,14 +96,14 @@
 
 <time datetime="2012-12-27T14:43:00+08:00" pubdate data-updated="true">Dec 27<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/#disqus_thread">Comments</a>
+         | <a href="#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>集群最近出现了一个非常诡异的现象，问题的表象如下：</p>
+<div class="entry-content"><p>集群最近出现了一个非常诡异的现象，问题的表象如下：</p>
 
 <figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
  <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -138,177 +135,76 @@
 
 <p>从经验上来看，很有可能是由于同步问题导致，但令我们百思不得其解的是：<strong><em>如果是同步问题造成，那么可以解释刚创建的文件马上去getFileInfo会出现类似的现象，但无法解释很久以前就存在的文件还会报这种错误。</em></strong>这个问题在我们的集群上隐藏了很长时间，岁素想尽了各种办法都没有找到最终的原因，只能让失败的job重跑。更令人崩溃的是，重跑能重现的概率极低，导致我们线下模拟变得非常的困难。 不过功夫不负有心人，经过非常非常苦逼的各种蛛丝马迹的分析和模拟，终于找到了底层最终的原因。</p>
 
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/">Read on &rarr;</a>
-    </footer>
-  
+<!-- more -->
 
 
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/">Datanode下线对集群带宽影响调研</a></h1>
-    
-    
-      <p class="meta">
-        
+<h3>疑惑：</h3>
+
+<p>这个bug是一个同步问题的bug，简单的说就是：namenode中所有对文件系统进行访问（读/写）都是加锁了，不修改namespace操作的加读 锁（getListing, getBlockLocations等），修改namespace结构的加读锁（mkdir，rename，create，delete等），唯一的一个 没有就是getFileInfo。之前怀疑就是因为这个同步问题造成的上述问题，但所有的表象中，最后剩下一个现象一直没法得到很合理的解释，那就是：</p>
+
+<figure class='code'><figcaption><span>FSImage#getFsImageName()  </span></figcaption>
+ <div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="n">rw</span><span class="o">-</span><span class="err"> </span> <span class="mi">10</span> <span class="n">jiangxiaohui</span> <span class="n">cug</span><span class="o">-</span><span class="n">admin</span><span class="err">   </span> <span class="mi">8302325</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">11</span><span class="o">-</span><span class="mi">15</span> <span class="mi">13</span><span class="o">:</span><span class="mi">34</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">hadoop</span><span class="o">/</span><span class="n">cluster</span><span class="o">-</span><span class="n">data</span><span class="o">/</span><span class="n">mapred</span><span class="o">/</span><span class="n">system</span><span class="o">/</span><span class="n">shared_cache</span><span class="o">/</span><span class="mi">3</span><span class="n">ec34669545c607f549b291ddd490d4f_jython</span><span class="o">.</span><span class="na">jar</span>
+</span></code></pre></td></tr></table></div></figure>
 
 
+<p>报文件不存在的这个文件，实际上在很早的时候就已经在HDFS的DistributedCache目录中了，job初始化的时候没有修改过，所以即使是同步问题，也无法解释很早就存在的文件为何get不到info。</p>
 
+<p>另外由于这个问题在测试环境中一直没有找到稳定重现的办法，所以之前的调查只能说怀疑跟这个地方有关，但无法下绝对的结论。</p>
 
+<h3>重现：</h3>
 
-
-
-
-  
-
-
-<time datetime="2012-11-14T22:13:00+08:00" pubdate data-updated="true">Nov 14<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>这是我两年前做的一个调研和测试，数据和集群规模有点老了，但是结论是有参考价值的。供大家参考。</p>
-
-<h3>背景介绍</h3>
-
-<p>在hadoop集群中，当一个datanode发生故障（宕机，进程被kill，网络不通等）时，namenode在一定时间内（默认10分30秒）无法收到该datanode的心跳信息，就会将该datanode从集群中下线。这样带来的影响是，保存在这台datanode上的所有block副本就需要复制到其他的datanode上去，以保证这些block的冗余副本数满足其期望的副本数（默认3）。 <br/>
-按照以上逻辑，一台datanode的下线肯定会造成集群内部各个datanode之间互相的复制block的情况，进而会带来一定的集群内部网络带宽消耗，虽然很多人都知道这个逻辑，但是具体到实际情况下，一台datanode下线对集群的网络带宽影响是一个什么样的程度，HDFS到底是怎么样进行block复制的，是否有带宽限制，如何进行限速配置等等，这些具体问题一直没有非常明确的数据。本次调研就是为了解决这个问题，对datanode下线对HDFS集群的带宽影响做一个比较详细的评估和测试。</p>
-
-<h3>Datanode下线逻辑</h3>
-
-<p>一台datanode下线的逻辑流程如下图所示：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">SecondaryNamenode做checkpoint时隐藏的一个性能瓶颈</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-11-13T22:41:00+08:00" pubdate data-updated="true">Nov 13<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>这个问题很隐晦，很难发现，而且通常也不会造成什么大的问题，但是当集群规模非常大，势必fsimage也会逐渐膨胀，那么当SecondaryNameNode做checkpoint的时候，效率会比fix这个问题的版本要低，带来的网络消耗也会比fix这个问题的版本要大。</p>
-
-<p>会触发这个性能隐患有几个条件：</p>
+<p>经过对所有出现类似这种现象的日志进行观察，发现很大部分出现都是在对 /home/hadoop/cluster-data/mapred/system/shared_cache 这个目录下的文件进行getFileInfo的时候出现的，这个目录是云梯上的DistributedCache目录，他的特点是：</p>
 
 <ol>
-<li>hadoop版本刚好有这个问题(0.20.2以及以前的版本/cdh3u0)</li>
-<li>namenode的fsimage和edits log写入点配置多个，并且包括一个NFS写入点（比如dfs.name.dir=/path/on/local,/path/to/nfs）</li>
-<li>NFS远程的mount点刚好在SNN的local磁盘上</li>
-<li>fsimage非常的大（云梯已经接近40G了）</li>
+<li>对该目录下的文件 进行ls操作非常的频繁；</li>
+<li>在这个目录下进行getFileInfo的时候，随时可能还有其他的进程往这个目录里增删文件或者目录。</li>
 </ol>
 
 
-<p>如下图所示：</p>
+<p>同时基于对某天出错时间点前后的 mapred/system目录以及mapred/system/shared_cache目录的audit log进行观察发现，虽然没有对3ec34669545c607f549b291ddd490d4f_jython.jar这个文件的修改操作，但那段时 间有比较频繁的对shared_cache目录下文件的增删操作。基于上述特点，我写了两个job尝试重现这种现象：</p>
 
+<ol>
+<li>在实验集群上创建一个文件： /home/hadoop/cluster-data/mapred/system/shared_cache/3ec34669545c607f549b291ddd490d4f_jython.jar</li>
+<li>jobA：并行跑540个map，在map中循环不断的对这个文件进行getFileInfo操作（while true），其他什么都不干</li>
+<li>jobB：并行跑100个map，在map中不停的对mapred/system目录以及mapred/system/shared_cache目录进行文件的增删操作，循环往复。   <br/>
+两个job都没有动过3ec34669545c607f549b291ddd490d4f_jython.jar文件，但运行一段时间后，问题重现了。</li>
+</ol>
+
+
+<p><img src="/static/getFileInfo_Bug/FileNotFoundException.png" alt="FileNotFoundException" /></p>
+
+<h3>分析原因：</h3>
+
+<p>重现以后，进一步跟踪，终于找到了深层次最终根本的原因。</p>
+
+<p><img src="/static/getFileInfo_Bug/IndexOutOfBoundException.png" alt="IndexOutOfBoundException" /></p>
+
+<p>namenode内部的namespace目录树结构是由一个一个的Inode组成，如果是目录，那么目录下的子INode是用一个children数组 保存的，所以要对一个目录下的某个文件进行getFileInfo操作，实际上就是找到那个目录的INode，并对该INode下的children数组 进行二分查找。出现问题的情况原因是：
+由于getFileInfo没有加directory的读锁，导致在getFileInfo的时候，当对children数组进行二分查找时，并不是一个 排他的查找，有可能在查找的过程中，children数组内的内容以及发生了变化，可能多了一个或多个child，也可能少了几个，这样当 getFileInfo找到某个文件在children数组中的index，并尝试去get(idx)时，这两个操作之间如果发生了children变 化，同时该变化还导致了该文件在children中的index发生了变化，或者向上述日志一样直接就数组越界，就有可能造成getFileInfo的返 回不准确。</p>
+
+<h3>解决：</h3>
+
+<p>找到了深层次的原因，解决起来就比较好办了，patch修改如下：</p>
+
+<p><img src="/static/getFileInfo_Bug/getFileInfo_patch.png" alt="getFileInfo_patch" /></p>
+
+<p><img src="/static/getFileInfo_Bug/getFileInfo_patch2.png" alt="getFileInfo_patch2" /></p>
+
+<p>PS:<strong><em>patch的修改是基于淘宝云梯集群的代码，并不一定适用于其他base版本。需要特别提出的是：我们的hadoop版本处于性能的原因做了很多的优化，性能提升的同时也带来了一些寻常集群没有碰到过的问题，如果你的集群用的是CDH3,甚至CDH4的版本，里面namenode内部仍然用的是全局锁，性能虽然不高（相对而言），但通常不会出现这种问题</em></strong></p>
+
+<p>问过facebook的同行，他们同样存在这个问题，只不过他们的提交作业场景跟我们不太一样，所以发生的频率没我们这么高，上个月他们fix了这个问题，我们的代码也在上个月fix了这个问题（http://reviewboard.dev.sd.aliyun.com/ReviewBoard/r/68258/），我用fix后的版本再次运行job，再也没有出现过上述现象。​</p>
 </div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2012/11/13/secondarynamenodezuo-checkpointshi-yin-cang-de-%5B%3F%5D-ge-xing-neng-ping-jing/">Read on &rarr;</a>
-    </footer>
-  
 
 
-    </article>
-  
-  
-    <article>
+  <footer>
+    <p class="meta">
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/11/10/11-dot-11gen-tong-shi-men-bing-jian-zhen-shou-yun-ti/">11.11跟同事们并肩镇守云梯</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
   
 
+<span class="byline author vcard">Posted by <span class="fn">罗李</span></span>
 
-<time datetime="2012-11-10T22:21:00+08:00" pubdate data-updated="true">Nov 10<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/11/10/11-dot-11gen-tong-shi-men-bing-jian-zhen-shou-yun-ti/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>11月09日，公司内部，不管是北京还是杭州，都弥漫着一股“山雨欲来风满楼”的氛围。所有的人所有的团队，都已经整装代发。核心系统部的同事早早的就开赴杭州了。我也独自上路，跟杭州云梯的兄弟们并肩作战</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2012/11/10/11-dot-11gen-tong-shi-men-bing-jian-zhen-shou-yun-ti/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/11/08/hadoopzuo-ye-diao-you-can-shu-zheng-li/">Hadoop作业调优参数整理</a></h1>
-    
-    
-      <p class="meta">
-        
 
 
 
@@ -320,185 +216,55 @@
   
 
 
-<time datetime="2012-11-08T20:50:00+08:00" pubdate data-updated="true">Nov 8<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/11/08/hadoopzuo-ye-diao-you-can-shu-zheng-li/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>新博客开张几天，有好多以前看过我CSDN上博客的同行们在问我以前的笔记还会不会整理到新博客上来，其实原本没有打算搞上来的，因为一来挺耗精力，二来也都比较老了，有一些内容可能大家都已经熟悉，或者有些已经过时了。实在没有想到居然还会有那么多关注以前文章。所以决定，把以前的一些笔记都还是整理到新博客上来。有的可能比较老了，大家请多包含。</p>
-
-<p>今天整理的是这一篇：“hadoop作业调优参数整理”</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2012/11/08/hadoopzuo-ye-diao-you-can-shu-zheng-li/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
+<time datetime="2012-12-27T14:43:00+08:00" pubdate data-updated="true">Dec 27<span>th</span>, 2012</time>
       
-  <header>
+
+
+    </p>
     
-      <h1 class="entry-title"><a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">Hadoop Rpc异步返回机制，大幅降低namenode processTime和queueTime</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
+      <div class="sharing">
   
-
-
-<time datetime="2012-11-04T16:00:00+08:00" pubdate data-updated="true">Nov 4<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>在我们的集群里，namenode是关注度最高的一个地方，尤其是作业运行开始变慢，集群吞吐开始下降的时候，虽然有可能是其他的原因，但第一个被想到的，总是namenode，俨然有一种superstar的感觉。 <br/>
-其实这是正常的。虽然只有在集群高负荷运行的时候，namenode的吞吐才会直接影响到整个集群的效率，但是。。。。下面这张图是云梯集群全天24小时map和reduce计算槽位的运行情况: <br/>
-<img src="/static/MR-running.GIF" alt="MR daily running" /></p>
-
-<p>直接一句话就是：除了每天0点到9点的生产时段，云梯集群全天无间隙的满负载运行。所以几乎每天，namenode的吞吐都是集群管理员关注的焦点。毫不夸张的说，我对namenode各项性能指标的熟悉程度，甚至要超过我对我家厨房里碗和调羹的个数和我家冰箱里还剩下多少杯酸奶。</p>
-
-<p>最近做了一个比较大的改动，从测试的数据来看，效果不错。所以把中间的细节整理了一下：</p>
-
+  <span>
+  <iframe 
+    width="86" 
+    scrolling="no" 
+    height="16" 
+    frameborder="0" 
+    src=
+      "http://hits.sinajs.cn/A1/weiboshare.html?url=http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/&amp;type=6&amp;ralateUid=1733934700&amp;language=zh_cn" allowtransparency="true">
+  </iframe>
+  </span>
+  
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/" data-via="" data-counturl="http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/" >Tweet</a>
+  
+  
+  
 </div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2012/11/04/hadoop-rpcyi-bu-fan-hui-ji-zhi-%2Cda-fu-jiang-di-namenode-processtimehe-queuetime/">Read on &rarr;</a>
-    </footer>
-  
+<hr style="border-bottom:1px dotted #bdbabd;height:1px;border-top:0px;border-left:0px;border-right:0px;" />
 
 
-    </article>
-  
-  
-    <article>
+    
+    <p class="meta">
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">跟facebook工程师交流HDFS笔记整理</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-11-03T17:17:00+08:00" pubdate data-updated="true">Nov 3<span>rd</span>, 2012</time>
-        
-         | <a href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>hadoop在纽约的大会今年是10月22日～10月25日召开的。被公司派去美国参加hadoop大会，本来非常高兴，谁知道一切具备的情况下居然莫名其妙的被美国使馆给拒签了…… 连B1签证都被拒了，点儿实在是太背。没办法，本来事先约好的跟facebook hadoop团队的交流中我的那部分，只有由同事代劳了。听说FB的人得知我因为签证被拒而没有去，都很诡异的笑了 -_-</p>
-
-<p>不过还好，虽然人没到场，但我要交流的topic和相应的细节都整理好了托同事带到了，然后通过事后的邮件来往，并不影响实质的交流。随着沟通的深入，我们的情况他们也都了解，他们的一些细节，我也都已经清楚。</p>
-
-<p>很客观的讲，在开发方面（运维方面我们的ops团队实在是够专业：） <a href="http://weibo.com/u/1804480064">@淘大舞</a> <a href="http://weibo.com/u/1084192524">@dun_2010</a>），至少在存储这一部分，FB比我们做的好，走的比我们快。邮件的深入交流中，我整理了一下他们特别提到的几点。应该说，由于集群规模和数据规模很接近，使用的hadoop版本也接近，所以大家遇到的问题和解决的方式都基本是很接近的思路，这其实非常的神奇，他们自己都说：在另外的一个地方，有一个跟我们最大的集群差不多规模的集群，做着相同的事情，遇到相同的问题，真的是一件神奇的事情。</p>
-
-<p>把交流的内容整理了一下，主要有一下几个方面：</p>
-
-</div>
-  
-  
-    <footer>
-      <a rel="full-article" href="/blog/2012/11/03/gen-facebookgong-cheng-shi-jiao-liu-hdfsbi-ji-zheng-li/">Read on &rarr;</a>
-    </footer>
-  
-
-
-    </article>
-  
-  
-    <article>
+        <a class="basic-alignment left" href="/blog/2012/11/14/datanodexia-xian-dui-ji-qun-dai-kuan-ying-xiang-diao-yan/" title="Previous Post: datanode下线对集群带宽影响调研">&laquo; datanode下线对集群带宽影响调研</a>
       
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/">新博客，第一篇，写给云梯</a></h1>
-    
-    
-      <p class="meta">
-        
+      
+    </p>
+  </footer>
+</article>
 
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-11-03T00:19:00+08:00" pubdate data-updated="true">Nov 3<span>rd</span>, 2012</time>
-        
-         | <a href="/blog/2012/11/03/xin-bo-ke-%2Cdi-%5B%3F%5D-pian-%2Cxie-gei-yun-ti/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>“数大就是美”，这是徐志摩同学《志摩日记二则》中的一句话：“数大”便是美。比如说：从无极的蓝空中下窥大地，是美；泰山顶上的云海，高大的云峰在晨光里镇定着，是美……。其实不仅仅这些，对于我来说，从云梯集群300台机器涨到现在3000多台，是美；云梯namenode的rpc吞吐一次次的上涨，是美；云梯的每一次性能数据的提升，也是美。</p>
-
-<p>虽然过程并不是非常顺利，虽然伴随着各种惊心动魄和提心吊胆，虽然最新的一次升级经历了两次失败，但是昨天（2012-11-01），我们的云梯集群第一次超过了3000规模（3160），存储容量达到65PB，namenode平均每天处理rpc数量20+亿，集群DFS中文件和目录上2.2亿，blocks数2.8亿。到这种程度，我们所做的任何事，早已经超越了一般的程序设计和技术开发，每一次的升级，每一行代码的修改，都牵动着整个公司几千工程师和他们的工作，他们的业绩，和他们对我们的信心。每动一下手指，都是责任。对我一个小小的工程师来说，这样一份天大的责任，扛的实在是诚恐诚惶。最近的两次升级都失败了，引来了很多的抱怨和质疑，很对不起那些翘首企盼的同事们。不知道该说什么好，我能做的：尽人事，听天命。</p>
-
-<p>新博客开张，第一篇，写给云梯。加油吧</p>
-
-<p>BTW：感谢华仔帮我申请的域名，我想我会一直保留这个域名的。</p>
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
 </div>
-  
-  
+  </section>
 
-
-    </article>
-  
-  <div class="pagination">
-    
-    <a href="/blog/archives">Blog Archives</a>
-    
-  </div>
 </div>
+
 <aside class="sidebar">
   
     <section>
-  <h1>About Me</h1>
-  <p>罗李，云梯hadoop集群管理员，淘宝hadoop团队北京负责人，鬼厉@淘宝</p>
-</section>
-<section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
     
@@ -550,6 +316,7 @@
   
 </aside>
 
+
     </div>
   </div>
   <footer role="contentinfo"><p>
@@ -564,7 +331,10 @@
       var disqus_shortname = 'luoli523';
       
         
-        var disqus_script = 'count.js';
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/';
+        var disqus_url = 'http://luoli523.github.com/blog/2012/12/27/yun-ti-ji-qun-filenotfoundling-yi-shi-jian-zhui-cha-shi-mo/';
+        var disqus_script = 'embed.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
